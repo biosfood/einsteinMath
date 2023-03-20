@@ -1,7 +1,7 @@
-from variable import Symbol
+from variable import Symbol, Vector
 
-x = Symbol('x')
-y = Symbol('y')
+t = Symbol('t')
+x = Vector('x')
 term = x**2 + 3/x**2
 print(term)
 print(term.differentiate(x))
