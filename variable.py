@@ -58,6 +58,8 @@ class CommutableTerm(Term):
         self.parts[:] = [part for part in self.parts if not isinstance(part, (int, float))]
         if numericalValue != self.defaultValue:
              self.parts += [numericalValue]
+        if len(self.parts) == 1:
+            return self.parts[0]
         return self
 
     def __str__(self):
@@ -70,11 +72,24 @@ class Addition(CommutableTerm):
 
     def action(self, x,y): return x+y
 
+    def differentiate(self, symbol):
+        return Addition([part.differentiate(symbol) for part in self.parts if isinstance(part, Term)])
+
 class Product(CommutableTerm):
     symbol = '*'
     defaultValue = 1
 
     def action(self, x,y): return x*y
+
+    def differentiate(self, symbol):
+        return Addition([Product([differentiatedPart.differentiate(symbol)] + [part for part in self.parts if part != differentiatedPart]) 
+                         for differentiatedPart in self.parts if isinstance(differentiatedPart, Term)])
+
+    def simplify(self):
+        superResult = super().simplify()
+        if type(superResult) == type(self) and 0 in superResult.parts:
+            return 0
+        return superResult
 
 class Exponentiation(Term):
     def __init__(self, basis, exponent):
@@ -101,3 +116,8 @@ class Symbol(Term):
 
     def __str__(self):
         return f'{self.name}'
+
+    def differentiate(self, symbol):
+        if self == symbol:
+            return 1
+        return 0
