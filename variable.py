@@ -23,11 +23,22 @@ class Calculatable:
     def __rmul__(self, other):
         return Product([self, other])
 
+    def __pow__(self, other):
+        return Exponentiation(self, other)
+
+    def __rpow__(self,other):
+        return Exponentiation(other, self)
+
 def safeSimplify(parts):
     for index, part in enumerate(parts):
         if isinstance(part, Term):
             parts[index] = part.simplify()
     return parts
+
+def safeDifferentiate(term, symbol):
+    if isinstance(term, Term):
+        return term.differentiate(symbol)
+    return 0
 
 class Term(Calculatable):
     def __init__(self):
@@ -104,10 +115,13 @@ class Exponentiation(Term):
         if self.basis == 1:
             return 1
         if self.exponent == 1:
-            return basis
+            return self.basis
         if isinstance(self.basis, (int, float)) and isinstance(self.exponent, (int, float)):
             return self.basis ** self.exponent
         return self
+
+    def differentiate(self, symbol):
+        return self.basis**(self.exponent-1)*self.exponent*safeDifferentiate(self.basis, symbol)
 
 class Symbol(Term):
     def __init__(self, name, dimensions=1):
