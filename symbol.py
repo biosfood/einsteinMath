@@ -25,32 +25,40 @@ class IndexPosition(Enum):
     UP = 1
     DOWN = 0
 
-class WithIndex():
-    def __init__(self, *indices, position = IndexPosition.UP):
+class WithIndex(Term):
+    def __init__(self, symbol, *indices, position = IndexPosition.UP):
         self.indices = indices
+        self.symbol = symbol
         self.position = position
 
     def __str__(self):
         indicesString = "".join(self.indices)
-        return f'[{indicesString}]' if self.position == IndexPosition.UP else f'{{{indicesString}}}'
+        addition = f'[{indicesString}]' if self.position == IndexPosition.UP else f'{{{indicesString}}}'
+        return str(self.symbol)+addition
 
-class Vector(WithIndex):
-    def __init__(self, symbol, replacements=[0 for _ in range(4)], index = getNextIndex()):
-        self.symbol = symbol
+class Vector(Symbol):
+    def __init__(self, symbol, replacements=[0 for _ in range(4)]):
+        super().__init__(symbol)
         self.replacements = replacements
-        super().__init__(index)
 
     def __str__(self):
-        return f'{self.symbol.name}{super().__str__()}'
+        return f'{super().__str__()}'
 
     def __getitem__(self, index):
         return self.replacements[index]
 
-class Matrix(WithIndex):
-    def __init__(self, symbol, replacements=[[0 for _ in range(4)] for _ in range(4)], indices = [getNextIndex() for _ in range(2)]):
-        self.symbol = symbol
+    def withIndex(self, index):
+        return WithIndex(self, index)
+
+class Matrix(Symbol):
+    def __init__(self, symbol, replacements=[[0 for _ in range(4)] for _ in range(4)]):
+        super().__init__(symbol)
         self.replacements = replacements
-        super().__init__(*indices, position = IndexPosition.DOWN)
 
     def __str__(self):
-        return f'{self.symbol.name}{super().__str__()}'
+        return f'{super().__str__()}'
+
+    def __call__(self, x, y):
+        a = getNextIndex()
+        b = getNextIndex()
+        return WithIndex(self, a, b, position=IndexPosition.DOWN) * x.withIndex(a) * y.withIndex(b)

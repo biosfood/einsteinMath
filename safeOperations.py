@@ -1,3 +1,5 @@
+from mathOperations import Term
+
 def safeSimplify(parts):
     for index, part in enumerate(parts):
         if isinstance(part, Term):

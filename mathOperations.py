@@ -1,5 +1,3 @@
-from safeOperations import *
-
 class Calculatable:
     def __add__(self, other):
         return Addition([self, other])
@@ -32,16 +30,15 @@ class Calculatable:
         return Exponentiation(other, self)
 
 class Term(Calculatable):
-    def derive(self, symbol):
-        pass
-
     def simplify(self):
         return self
+
+from safeOperations import *
 
 class CommutableTerm(Term):
     symbol=''
     defaultValue=None
-    action=lambda _,_,_: 0
+    action=lambda x,y,z: 0
 
     def __init__(self, parts = []):
         self.parts = parts
