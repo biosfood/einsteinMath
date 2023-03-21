@@ -151,22 +151,35 @@ class IndexPosition(Enum):
     UP = 1
     DOWN = 0
 
-class WithIndex(Symbol):
-    def __init__(self, name, *indices):
-        super().__init__(name)
+class WithIndex():
+    def __init__(self, *indices, position = IndexPosition.UP):
         self.indices = indices
-        self.position = IndexPosition.UP
+        self.position = position
 
     def __str__(self):
         indicesString = "".join(self.indices)
         return f'[{indicesString}]' if self.position == IndexPosition.UP else f'{{{indicesString}}}'
 
 class Vector(WithIndex):
-    def __init__(self, name, index = getNextIndex()):
-        super().__init__(name, index)
+    def __init__(self, symbol, replacements=[0 for _ in range(4)], index = getNextIndex()):
+        self.symbol = symbol
+        self.replacements = replacements
+        super().__init__(index)
 
     def __str__(self):
-        return f'{self.name}{super().__str__()}'
+        return f'{self.symbol.name}{super().__str__()}'
+
+    def __getitem__(self, index):
+        return self.replacements[index]
+
+class Matrix(WithIndex):
+    def __init__(self, symbol, replacements=[[0 for _ in range(4)] for _ in range(4)], indices = [getNextIndex() for _ in range(2)]):
+        self.symbol = symbol
+        self.replacements = replacements
+        super().__init__(*indices, position = IndexPosition.DOWN)
+
+    def __str__(self):
+        return f'{self.symbol.name}{super().__str__()}'
 
 class d:
     def __init__(self, term):
