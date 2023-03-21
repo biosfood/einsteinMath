@@ -167,3 +167,10 @@ class Vector(WithIndex):
 
     def __str__(self):
         return f'{self.name}{super().__str__()}'
+
+class d:
+    def __init__(self, term):
+        self.term = term
+
+    def __truediv__(self, other):
+        return self.term.differentiate(other.term)
