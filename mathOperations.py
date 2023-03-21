@@ -1,3 +1,5 @@
+from symbol import *
+
 class Calculatable:
     def __add__(self, other):
         return Addition([self, other])
@@ -33,6 +35,12 @@ class Term(Calculatable):
     def simplify(self):
         return self
 
+    def withValues(self, _):
+        return self
+
+    def differentiate(self, _):
+        return self
+
 from safeOperations import *
 
 class CommutableTerm(Term):
@@ -65,6 +73,9 @@ class CommutableTerm(Term):
     def __str__(self):
         return f'({self.symbol.join([str(part) for part in self.parts])})'
 
+    def withValues(self, values):
+        self.parts = safeApply(self.parts, values)
+        return self
 
 class Addition(CommutableTerm):
     symbol = '+'
@@ -87,8 +98,14 @@ class Product(CommutableTerm):
 
     def simplify(self):
         superResult = super().simplify()
-        if type(superResult) == type(self) and 0 in superResult.parts:
+        if type(superResult) != type(self):
+            return superResult
+        if 0 in superResult.parts:
             return 0
+        #for index, part in enumerate(self.parts):
+        #    if isinstance(part, WithIndex) and part.values != None:
+        #        for otherPart in self.parts[index:]:
+        #            if otherPart.
         return superResult
 
 class Exponentiation(Term):
@@ -113,3 +130,7 @@ class Exponentiation(Term):
 
     def differentiate(self, symbol):
         return self.basis**(self.exponent-1)*self.exponent*safeDifferentiate(self.basis, symbol)
+
+    def withValues(self, values):
+        self.basis, self.exponent = safeApply([self.basis, self.exponent], values)
+        return self

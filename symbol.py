@@ -30,11 +30,26 @@ class WithIndex(Term):
         self.indices = indices
         self.symbol = symbol
         self.position = position
+        self.values = None
+        self.indexValues = {}
 
     def __str__(self):
         indicesString = "".join(self.indices)
         addition = f'[{indicesString}]' if self.position == IndexPosition.UP else f'{{{indicesString}}}'
         return str(self.symbol)+addition
+
+    def withValues(self, values):
+        if self.symbol in values.keys():
+            self.values = values[self.symbol]
+        for index in self.indices:
+            if index in values:
+                self.indexValues[index] = values[index]
+        if len(self.indexValues) == len(self.indices) and self.values != None:
+            currentValues = self.values
+            for index in self.indices:
+                currentValues = currentValues[self.indexValues[index]]
+            return currentValues
+        return self
 
 class Vector(Symbol):
     def __init__(self, symbol, replacements=[0 for _ in range(4)]):

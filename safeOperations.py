@@ -11,6 +11,12 @@ def safeDifferentiate(term, symbol):
         return term.differentiate(symbol)
     return 0
 
+def safeApply(parts, values):
+    for index, term in enumerate(parts):
+        if isinstance(term, Term):
+            parts[index] = term.withValues(values)
+    return parts
+
 class d:
     def __init__(self, term):
         self.term = term
