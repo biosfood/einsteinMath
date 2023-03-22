@@ -11,10 +11,11 @@ def safeDifferentiate(term, symbol):
         return term.differentiate(symbol)
     return 0
 
-def safeApply(parts, values):
+def safeApply(parts, values, modifyObject):
+    parts = list(parts)
     for index, term in enumerate(parts):
         if isinstance(term, Term):
-            parts[index] = term.withValues(values)
+            parts[index] = term.withValues(values, modifyObject)
     return parts
 
 class d:

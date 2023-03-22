@@ -9,9 +9,9 @@ c = Symbol('c')
 x = Vector('x')
 g = Matrix('g')
 
-xValue = [Symbol(name) for name in ['tau', 'r', 'phi']]
-gValue = diagonal([c**2, -1, x[2]**2])
+xValue = [Symbol(name) for name in ['tau', 'r', 'phi', 'eta']]
+gValue = diagonal([c**2, -1, -x[1]**2, -x[1]**2])
 
 magnitude = g(x, x)
 print(magnitude)
-print(magnitude.withValues({x: xValue, g: gValue, 'α': 1, 'β': 1}).simplify())
+print(magnitude.withValues({x: xValue, g: gValue}).simplify())

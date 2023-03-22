@@ -25,50 +25,61 @@ class IndexPosition(Enum):
     UP = 1
     DOWN = 0
 
+def copy(x):
+    if isinstance(x, list):
+        return list(x)
+    if isinstance(x, dict):
+        return dict(x)
+    return x
+
 class WithIndex(Term):
-    def __init__(self, symbol, *indices, position = IndexPosition.UP):
+    def __init__(self, symbol, indices, position = IndexPosition.UP, values = None, indexValues = None):
+        if indexValues == None:
+            indexValues = {}
         self.indices = indices
         self.symbol = symbol
         self.position = position
-        self.values = None
-        self.indexValues = {}
+        self.values = values
+        self.indexValues = indexValues
 
     def __str__(self):
-        indicesString = "".join(self.indices)
+        indicesString = "".join(self.indices.keys())
         addition = f'[{indicesString}]' if self.position == IndexPosition.UP else f'{{{indicesString}}}'
         return str(self.symbol)+addition
 
-    def withValues(self, values):
-        if self.symbol in values.keys():
+    def withValues(self, values, modifyObject = True):
+        if not modifyObject:
+            return WithIndex(self.symbol, copy(self.indices), copy(self.position), copy(self.values), copy(self.indexValues)).withValues(values)
+        if self.symbol in values:
             self.values = values[self.symbol]
-        for index in self.indices:
+        for index in self.indices.keys():
             if index in values:
                 self.indexValues[index] = values[index]
         if len(self.indexValues) == len(self.indices) and self.values != None:
             currentValues = self.values
-            for index in self.indices:
+            for index in self.indices.keys():
                 currentValues = currentValues[self.indexValues[index]]
+            if isinstance(currentValues, Term):
+                currentValues = currentValues.withValues(values, False)
             return currentValues
         return self
 
 class Vector(Symbol):
-    def __init__(self, symbol, replacements=[0 for _ in range(4)]):
+    def __init__(self, symbol):
         super().__init__(symbol)
-        self.replacements = replacements
 
     def __str__(self):
         return f'{super().__str__()}'
 
     def __getitem__(self, index):
-        return self.replacements[index]
+        return WithIndex(self, {'index': None}).withValues({'index': index})
 
     def withIndex(self, index):
         return WithIndex(self, index)
 
 class Matrix(Symbol):
-    def __init__(self, symbol, replacements=[[0 for _ in range(4)] for _ in range(4)]):
+    def __init__(self, symbol):
         super().__init__(symbol)
-        self.replacements = replacements
 
     def __str__(self):
         return f'{super().__str__()}'
@@ -76,4 +87,9 @@ class Matrix(Symbol):
     def __call__(self, x, y):
         a = getNextIndex()
         b = getNextIndex()
-        return WithIndex(self, a, b, position=IndexPosition.DOWN) * x.withIndex(a) * y.withIndex(b)
+        xWithIndex = x.withIndex({a: self})
+        yWithIndex = y.withIndex({b: self})
+        selfWithIndex = WithIndex(self, {a: xWithIndex, b: yWithIndex}, IndexPosition.DOWN)
+        xWithIndex.indices[a] = selfWithIndex
+        yWithIndex.indices[b] = selfWithIndex
+        return selfWithIndex * xWithIndex * yWithIndex

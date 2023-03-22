@@ -1,5 +1,3 @@
-from symbol import *
-
 class Calculatable:
     def __add__(self, other):
         return Addition([self, other])
@@ -31,11 +29,16 @@ class Calculatable:
     def __rpow__(self,other):
         return Exponentiation(other, self)
 
+    def __neg__(self):
+        return Product([-1, self])
+
 class Term(Calculatable):
     def simplify(self):
         return self
 
-    def withValues(self, _):
+    def withValues(self, values, modifyObject = True):
+        _ = values
+        _ = modifyObject
         return self
 
     def differentiate(self, _):
@@ -51,6 +54,7 @@ class CommutableTerm(Term):
     def __init__(self, parts = []):
         self.parts = parts
         self.simplify()
+        self.values = {}
 
     def simplify(self):
         # simplify all parts
@@ -73,9 +77,13 @@ class CommutableTerm(Term):
     def __str__(self):
         return f'({self.symbol.join([str(part) for part in self.parts])})'
 
-    def withValues(self, values):
-        self.parts = safeApply(self.parts, values)
-        return self
+    def withValues(self, values, modifyObject = True):
+        parts = safeApply(self.parts, values, modifyObject)
+        if modifyObject:
+            self.parts = parts
+            self.values.update(values)
+            return self
+        return type(self)(parts)
 
 class Addition(CommutableTerm):
     symbol = '+'
@@ -86,6 +94,11 @@ class Addition(CommutableTerm):
     def differentiate(self, symbol):
         return Addition([part.differentiate(symbol) for part in self.parts if isinstance(part, Term)])
 
+def generateAllIndices(remainingIndices, values):
+    if len(remainingIndices) == 0:
+        return [values]
+    return sum([generateAllIndices(remainingIndices[1:], {**values, remainingIndices[0]: i}) for i in range(4)], [])
+
 class Product(CommutableTerm):
     symbol = '*'
     defaultValue = 1
@@ -93,20 +106,31 @@ class Product(CommutableTerm):
     def action(self, x,y): return x*y
 
     def differentiate(self, symbol):
-        return Addition([Product([differentiatedPart.differentiate(symbol)] + [part for part in self.parts if part != differentiatedPart]) 
+        return Addition([Product([differentiatedPart.differentiate(symbol)] + [part for part in self.parts if part != differentiatedPart])
                          for differentiatedPart in self.parts if isinstance(differentiatedPart, Term)])
 
     def simplify(self):
+        from symbol import WithIndex
         superResult = super().simplify()
         if type(superResult) != type(self):
             return superResult
         if 0 in superResult.parts:
             return 0
-        #for index, part in enumerate(self.parts):
-        #    if isinstance(part, WithIndex) and part.values != None:
-        #        for otherPart in self.parts[index:]:
-        #            if otherPart.
-        return superResult
+        indicesToIterate = set(())
+        for part in self.parts:
+            if isinstance(part, WithIndex) and part.values != None:
+                abort = False
+                for testIndex in part.indices:
+                    if not part.indices[testIndex] in self.parts:
+                        abort = True
+                        break
+                if abort: break
+                indicesToIterate.update(part.indices.keys())
+        indexPossibilities = generateAllIndices(list(indicesToIterate), {})
+        if len(indexPossibilities) == 1:
+            return self
+        result = sum([self.withValues({**self.values, **option}, False) for option in indexPossibilities])
+        return result
 
 class Exponentiation(Term):
     def __init__(self, basis, exponent):
@@ -131,6 +155,10 @@ class Exponentiation(Term):
     def differentiate(self, symbol):
         return self.basis**(self.exponent-1)*self.exponent*safeDifferentiate(self.basis, symbol)
 
-    def withValues(self, values):
-        self.basis, self.exponent = safeApply([self.basis, self.exponent], values)
-        return self
+    def withValues(self, values, modifyObject = True):
+        basis, exponent = safeApply([self.basis, self.exponent], values, modifyObject)
+        if modifyObject:
+            self.basis = basis
+            self.exponent = exponent
+            return self
+        return Exponentiation(basis, exponent)
