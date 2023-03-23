@@ -1,45 +1,51 @@
 class Calculatable:
     def __add__(self, other):
-        return Addition([self, other])
+        return Addition([self, other]).simplify()
 
     def __radd__(self, other):
-        return Addition([self, other])
+        return Addition([self, other]).simplify()
 
     def __sub__(self, other):
-        return Addition([self, Product([-1, other])])
+        return Addition([self, Product([-1, other])]).simplify()
 
     def __rsub__(self, other):
-        return Addition([other, Product([-1, self])])
+        return Addition([other, Product([-1, self])]).simplify()
 
     def __truediv__(self, other):
-        return Product([self, Exponentiation(other, -1)])
+        return Product([self, Exponentiation(other, -1)]).simplify()
 
     def __rtruediv__(self, other):
-        return Product([other, Exponentiation(self, -1)])
+        return Product([other, Exponentiation(self, -1)]).simplify()
 
     def __mul__(self, other):
-        return Product([self, other])
+        return Product([self, other]).simplify()
 
     def __rmul__(self, other):
-        return Product([self, other])
+        return Product([self, other]).simplify()
 
     def __pow__(self, other):
-        return Exponentiation(self, other)
+        return Exponentiation(self, other).simplify()
 
     def __rpow__(self,other):
-        return Exponentiation(other, self)
+        return Exponentiation(other, self).simplify()
 
     def __neg__(self):
-        return Product([-1, self])
+        return Product([-1, self]).simplify()
 
 class Term(Calculatable):
+    def __init__(self, knowledge = None):
+        if knowledge == None:
+            knowledge = {}
+        self.knowledge = knowledge
+
     def simplify(self):
         return self
 
-    def withValues(self, values, modifyObject = True):
-        _ = values
-        _ = modifyObject
-        return self
+    def clone(self, knowledge):
+        raise Exception("clone not implemented", knowledge)
+
+    def use(self, values):
+        return self.clone(knowledge={**self.knowledge, **values})
 
     def differentiate(self, _):
         return self
@@ -49,12 +55,10 @@ from safeOperations import *
 class CommutableTerm(Term):
     symbol=''
     defaultValue=None
-    action=lambda x,y,z: 0
 
-    def __init__(self, parts = []):
+    def __init__(self, parts = [], knowledge = None):
+        super().__init__(knowledge)
         self.parts = parts
-        self.simplify()
-        self.values = {}
 
     def simplify(self):
         # simplify all parts
@@ -77,13 +81,8 @@ class CommutableTerm(Term):
     def __str__(self):
         return f'({self.symbol.join([str(part) for part in self.parts])})'
 
-    def withValues(self, values, modifyObject = True):
-        parts = safeApply(self.parts, values, modifyObject)
-        if modifyObject:
-            self.parts = parts
-            self.values.update(values)
-            return self
-        return type(self)(parts)
+    def clone(self, knowledge):
+        return type(self)(safeUse(self.parts, knowledge), knowledge).simplify()
 
 class Addition(CommutableTerm):
     symbol = '+'
@@ -99,6 +98,12 @@ def generateAllIndices(remainingIndices, values):
         return [values]
     return sum([generateAllIndices(remainingIndices[1:], {**values, remainingIndices[0]: i}) for i in range(4)], [])
 
+def testAny(array, function):
+    for element in array:
+        if function(element):
+            return True
+    return False
+
 class Product(CommutableTerm):
     symbol = '*'
     defaultValue = 1
@@ -110,30 +115,30 @@ class Product(CommutableTerm):
                          for differentiatedPart in self.parts if isinstance(differentiatedPart, Term)])
 
     def simplify(self):
-        from symbol import WithIndex
+        from symbol import WithIndex, IndexPosition
         superResult = super().simplify()
         if type(superResult) != type(self):
             return superResult
         if 0 in superResult.parts:
             return 0
-        indicesToIterate = set(())
+        lowerIndices = set()
+        upperIndices = set()
         for part in self.parts:
-            if isinstance(part, WithIndex) and part.values != None:
-                abort = False
-                for testIndex in part.indices:
-                    if not part.indices[testIndex] in self.parts:
-                        abort = True
-                        break
-                if abort: break
-                indicesToIterate.update(part.indices.keys())
+            if isinstance(part, WithIndex) and part.symbol in part.knowledge:
+                if part.position == IndexPosition.UP:
+                    upperIndices.update(part.indices)
+                elif part.position == IndexPosition.DOWN:
+                    lowerIndices.update(part.indices)
+        indicesToIterate = lowerIndices.intersection(lowerIndices)
         indexPossibilities = generateAllIndices(list(indicesToIterate), {})
         if len(indexPossibilities) == 1:
             return self
-        result = sum([self.withValues({**self.values, **option}, False) for option in indexPossibilities])
+        result = sum([self.use({**self.knowledge, **option}) for option in indexPossibilities])
         return result
 
 class Exponentiation(Term):
-    def __init__(self, basis, exponent):
+    def __init__(self, basis, exponent, knowledge = None):
+        super().__init__(knowledge)
         self.basis = basis
         self.exponent = exponent
 
@@ -155,10 +160,6 @@ class Exponentiation(Term):
     def differentiate(self, symbol):
         return self.basis**(self.exponent-1)*self.exponent*safeDifferentiate(self.basis, symbol)
 
-    def withValues(self, values, modifyObject = True):
-        basis, exponent = safeApply([self.basis, self.exponent], values, modifyObject)
-        if modifyObject:
-            self.basis = basis
-            self.exponent = exponent
-            return self
-        return Exponentiation(basis, exponent)
+    def clone(self, knowledge):
+        basis, exponent = safeUse([self.basis, self.exponent], knowledge)
+        return Exponentiation(basis, exponent, knowledge)

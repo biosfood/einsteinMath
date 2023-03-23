@@ -11,12 +11,8 @@ def safeDifferentiate(term, symbol):
         return term.differentiate(symbol)
     return 0
 
-def safeApply(parts, values, modifyObject):
-    parts = list(parts)
-    for index, term in enumerate(parts):
-        if isinstance(term, Term):
-            parts[index] = term.withValues(values, modifyObject)
-    return parts
+def safeUse(parts, knowledge):
+    return [term.use(knowledge) if isinstance(term, Term) else term for term in parts]
 
 class d:
     def __init__(self, term):

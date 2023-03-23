@@ -13,5 +13,6 @@ xValue = [Symbol(name) for name in ['tau', 'r', 'phi', 'eta']]
 gValue = diagonal([c**2, -1, -x[1]**2, -x[1]**2])
 
 magnitude = g(x, x)
+print(x[0].use({x: xValue}))
 print(magnitude)
-print(magnitude.withValues({x: xValue, g: gValue}).simplify())
+print(magnitude.use({x: xValue, g: gValue}))
