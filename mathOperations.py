@@ -112,7 +112,7 @@ class Product(CommutableTerm):
 
     def differentiate(self, symbol):
         return Addition([Product([differentiatedPart.differentiate(symbol)] + [part for part in self.parts if part != differentiatedPart])
-                         for differentiatedPart in self.parts if isinstance(differentiatedPart, Term)])
+                         for differentiatedPart in self.parts if isinstance(differentiatedPart, Term)]).simplify()
 
     def simplify(self):
         from symbol import WithIndex, IndexPosition
@@ -163,3 +163,15 @@ class Exponentiation(Term):
     def clone(self, knowledge):
         basis, exponent = safeUse([self.basis, self.exponent], knowledge)
         return Exponentiation(basis, exponent, knowledge)
+
+class Differential(Term):
+    def __init__(self, term, variable):
+        self.term = term
+        self.variable = variable
+
+    def __str__(self):
+        from symbol import Matrix, WithIndex
+        if isinstance(self.term, WithIndex) and isinstance(self.term.symbol, Matrix) and isinstance(self.variable, WithIndex):
+            matrixString = str(self.term)
+            return f'{matrixString[:-1]},{"".join(self.variable.indices)}{matrixString[-1]}'
+        return f'd({self.term})/d{self.variable}'

@@ -2,9 +2,11 @@ from enum import Enum
 from mathOperations import *
 
 class Symbol(Term):
-    def __init__(self, name, knowledge=None):
+    def __init__(self, name, dependencies = set(), derivativeSymbol=None, knowledge=None):
         super().__init__(knowledge)
         self.name = name
+        self.dependencies = dependencies
+        self.derivativeSymbol = derivativeSymbol
 
     def __str__(self):
         return f'{self.name}'
@@ -45,6 +47,22 @@ class WithIndex(Term):
         self.symbol = symbol
         self.position = position
 
+    def differentiate(self, symbol):
+        if isinstance(symbol, (Vector, Matrix)):
+            symbol = WithIndex(symbol, {getNextIndex()})
+        s = symbol.symbol if isinstance(symbol, WithIndex) else symbol
+        if self.symbol == s:
+            return 1
+        if any(map(lambda dependency: s in dependency.dependencies, self.symbol.dependencies)):
+            # assuming only one common dependency, don't know how to handle multiple
+            dependency = WithIndex(list(self.symbol.dependencies)[0], {getNextIndex()})
+            return self.differentiate(dependency) * dependency.differentiate(symbol)
+        if not s in self.symbol.dependencies:
+            return 0
+        if self.symbol.derivativeSymbol != None:
+            return WithIndex(self.symbol.derivativeSymbol, self.indices, self.position, self.knowledge)
+        return Differential(self, symbol)
+
     def __str__(self):
         indicesString = "".join(self.indices)
         addition = f'[{indicesString}]' if self.position == IndexPosition.UP else f'{{{indicesString}}}'
@@ -64,26 +82,26 @@ class WithIndex(Term):
         return currentValues
 
 class Vector(Symbol):
-    def __init__(self, symbol):
-        super().__init__(symbol)
+    def __init__(self, symbol, dependencies = set(), derivativeSymbol = None):
+        super().__init__(symbol, dependencies, derivativeSymbol)
 
     def __str__(self):
         return f'{super().__str__()}'
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> WithIndex:
         return WithIndex(self, {'index': None}).use({'index': index})
 
     def withIndex(self, index):
         return WithIndex(self, index)
 
 class Matrix(Symbol):
-    def __init__(self, symbol):
-        super().__init__(symbol)
+    def __init__(self, symbol, dependencies = set(), derivativeSymbol = None):
+        super().__init__(symbol, dependencies, derivativeSymbol)
 
     def __str__(self):
         return f'{super().__str__()}'
 
-    def __call__(self, x, y):
+    def __call__(self, x, y) -> Product:
         a = getNextIndex()
         b = getNextIndex()
         return x.withIndex({a}) * WithIndex(self, {a, b}, IndexPosition.DOWN) * y.withIndex({b})
