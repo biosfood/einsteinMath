@@ -55,6 +55,7 @@ from safeOperations import *
 class CommutableTerm(Term):
     symbol=''
     defaultValue=None
+    action = lambda self, x, y: (self, x, y)
 
     def __init__(self, parts = [], knowledge = None):
         super().__init__(knowledge)
@@ -76,6 +77,7 @@ class CommutableTerm(Term):
              self.parts += [numericalValue]
         if len(self.parts) == 1:
             return self.parts[0]
+        self.parts = sum([part.parts if type(part) == type(self) else [part] for part in self.parts], [])
         return self
 
     def __str__(self):
@@ -91,7 +93,7 @@ class Addition(CommutableTerm):
     def action(self, x,y): return x+y
 
     def differentiate(self, symbol):
-        return Addition([part.differentiate(symbol) for part in self.parts if isinstance(part, Term)])
+        return Addition([part.differentiate(symbol) for part in self.parts if isinstance(part, Term)]).simplify()
 
 def generateAllIndices(remainingIndices, values):
     if len(remainingIndices) == 0:
